@@ -10,6 +10,7 @@ import java.nio.channels.FileChannel;
 interface PoseEstimator extends AutoCloseable {
     int size();
     Pose estimate(Frame frame, FrameTransform transform);
+    long preprocessingNanos();
     long inferenceNanos();
     @Override void close();
 

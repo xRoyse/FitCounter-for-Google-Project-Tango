@@ -22,6 +22,8 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w com.example.fitcounter.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
+Для проверки модели и счётчика по локальным видео используйте сценарии из [технического отчёта](docs/POSE_FIX_REPORT.md).
+
 ## Использование
 
 1. Выберите упражнение и поставьте устройство неподвижно. Для отжиманий покажите камере тело сбоку, включая плечо, локоть, запястье и бедро. Для приседаний встаньте сбоку или вполоборота и оставьте в кадре ноги целиком.

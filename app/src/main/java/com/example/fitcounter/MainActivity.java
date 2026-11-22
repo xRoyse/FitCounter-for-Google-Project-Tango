@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Insets;
 import android.graphics.SurfaceTexture;
 import android.hardware.display.DisplayManager;
@@ -30,12 +31,14 @@ import java.text.NumberFormat;
 
 public class MainActivity extends Activity {
     private static final int CAMERA_REQUEST = 1;
+    private static final long POSE_TIMEOUT_MS = 800;
     private static final int[] TAB_IDS = {R.id.tab_training, R.id.tab_calendar, R.id.tab_stats};
     private static final int[] SCREEN_IDS = {R.id.training_screen, R.id.calendar_screen, R.id.stats_screen};
     private static final int[] PHASE_LABELS = {R.string.find_start, R.string.ready, R.string.lowering,
             R.string.bottom, R.string.rising};
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final Runnable poseExpired = this::expirePose;
+    private final Runnable overlayExpired = () -> this.skeleton.show(null, null, false);
     private final Runnable openCamera = this::openPreview;
     private final DisplayManager.DisplayListener displayListener = new DisplayManager.DisplayListener() {
         @Override public void onDisplayAdded(int id) {}
@@ -61,11 +64,14 @@ public class MainActivity extends Activity {
     private SkeletonView skeleton;
     private Spinner selector;
     private TextView repetitions, angle, angleLabel, phase, hint, cameraFacingLabel, cameraStatus, saveMessage;
-    private Button start, finish, reset, retry, thresholds, switchCamera;
+    private Button start, finish, reset, retry, thresholds;
+    private View switchCamera;
     private FrameSource.Facing cameraFacing;
     private boolean canSwitchCamera;
     private int tab, generation, rotation, cameraError;
     private boolean resumed, destroyed, permissionAsked, cameraReady, modelReady, mirror, saving;
+    private long lastPoseFrame, previewWindow;
+    private int previewFrames;
     private int workoutMessage;
 
     @Override protected void onCreate(Bundle state) {
@@ -187,7 +193,16 @@ public class MainActivity extends Activity {
                 source.stop(surface::release);
                 return false;
             }
-            @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
+            @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+                if (!BuildConfig.DEBUG || !cameraReady) return;
+                long now = SystemClock.uptimeMillis();
+                if (previewFrames++ == 0) previewWindow = now;
+                if (previewFrames == 120) {
+                    android.util.Log.d("FitCounter", "UI preview fps="
+                            + 119_000f / Math.max(1, now - previewWindow));
+                    previewFrames = 0;
+                }
+            }
         });
     }
 
@@ -286,16 +301,21 @@ public class MainActivity extends Activity {
             @Override public void onReady() {
                 if (ticket != generation) return;
                 modelReady = true;
+                if (cameraReady) ui.postDelayed(poseExpired, POSE_TIMEOUT_MS);
                 render();
             }
 
-            @Override public void onPose(PoseReading reading) {
+            @Override public void onPose(PoseReading reading, Bitmap image) {
                 if (ticket != generation || cameraError != 0 || !cameraReady
-                        || SystemClock.uptimeMillis() - reading.time > 900) return;
-                skeleton.show(reading, mirror);
+                        || reading.frameId <= lastPoseFrame
+                        || SystemClock.uptimeMillis() - reading.time > PosePipeline.MAX_DISPLAY_AGE_MS) return;
+                lastPoseFrame = reading.frameId;
+                skeleton.show(image == null ? null : reading, image, mirror);
+                ui.removeCallbacks(overlayExpired);
+                if (image != null) ui.postAtTime(overlayExpired, reading.time + PosePipeline.MAX_DISPLAY_AGE_MS);
                 session.accept(reading);
                 ui.removeCallbacks(poseExpired);
-                ui.postAtTime(poseExpired, reading.time + 1000);
+                ui.postAtTime(poseExpired, reading.time + POSE_TIMEOUT_MS);
                 render();
             }
 
@@ -322,6 +342,7 @@ public class MainActivity extends Activity {
                     preview.setFrameSize(width, height);
                     mirror = mirrored;
                     cameraReady = true;
+                    if (modelReady) ui.postDelayed(poseExpired, POSE_TIMEOUT_MS);
                     render();
                 });
             }
@@ -341,8 +362,10 @@ public class MainActivity extends Activity {
     }
 
     private void expirePose() {
-        skeleton.show(null, false);
-        session.abandonCycle();
+        ui.removeCallbacks(poseExpired);
+        ui.removeCallbacks(overlayExpired);
+        skeleton.show(null, null, false);
+        session.expirePose();
         render();
     }
 
@@ -356,7 +379,11 @@ public class MainActivity extends Activity {
         if (source != null) source.stop();
         ui.removeCallbacks(poseExpired);
         cameraReady = modelReady = false;
-        expirePose();
+        previewFrames = 0;
+        ui.removeCallbacks(overlayExpired);
+        skeleton.show(null, null, false);
+        session.resetTracking();
+        render();
     }
 
     private int displayDegrees() {
@@ -420,10 +447,10 @@ public class MainActivity extends Activity {
                 ? (saving ? R.string.saving : R.string.save_error) : R.string.idle);
         setLabel(hint, exercise.hint);
         showMessage(saveMessage, pending ? 0 : workoutMessage);
-        int status = cameraError != 0 ? cameraError : !ready
-                ? R.string.camera_loading : !hasAngle ? R.string.no_pose : R.string.pose_detected;
+        int status = cameraError != 0 ? cameraError : !ready ? R.string.camera_loading : trackingLabel();
         if (!Integer.valueOf(status).equals(cameraStatus.getTag())) {
-            boolean warning = cameraError != 0 || status == R.string.no_pose;
+            boolean warning = cameraError != 0 || status == R.string.no_pose || status == R.string.no_person
+                    || status == R.string.pose_timeout;
             cameraStatus.setBackgroundResource(warning ? R.drawable.ui_warn : R.drawable.ui_good);
             cameraStatus.setTextColor(getResources().getColor(warning ? R.color.ui_coral : R.color.ui_emerald));
             cameraStatus.setText(status);
@@ -434,6 +461,16 @@ public class MainActivity extends Activity {
         retry.setVisibility(cameraError != 0 ? View.VISIBLE : View.GONE);
         switchCamera.setVisibility(canSwitchCamera && hasPermission() ? View.VISIBLE : View.GONE);
         switchCamera.setEnabled(cameraReady || cameraError != 0);
+    }
+
+    private int trackingLabel() {
+        switch (session.tracking()) {
+            case TRACKING: return R.string.pose_detected;
+            case PARTIALLY_VISIBLE: return R.string.no_pose;
+            case NO_PERSON: return R.string.no_person;
+            case STALE: return R.string.pose_timeout;
+            default: return R.string.pose_acquiring;
+        }
     }
 
     private void showMessage(TextView view, int message) {

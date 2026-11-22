@@ -37,7 +37,7 @@ public class ExampleUnitTest {
 
     @Test public void poseLossOrLargeGapRequiresNewStartingPosition() {
         ExerciseCounter lost = new ExerciseCounter(160, 95);
-        assertEquals(0, feed(lost, 170, 171, 125, 92, 90, Double.NaN, 120, 171, 172));
+        assertEquals(0, feed(lost, 170, 171, 125, 92, 90, Double.NaN, 171, 172));
         ExerciseCounter gap = new ExerciseCounter(160, 95);
         feed(gap, 170, 171, 125, 92, 90);
         assertFalse(gap.accept(2200, 130, true, true));

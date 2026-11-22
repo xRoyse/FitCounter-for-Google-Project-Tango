@@ -9,4 +9,8 @@ final class Pose {
     boolean visible(int joint, float threshold) {
         return confidence[joint] >= threshold;
     }
+
+    double distance(int a, int b) {
+        return Math.hypot(x[a] - x[b], y[a] - y[b]);
+    }
 }

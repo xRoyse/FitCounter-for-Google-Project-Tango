@@ -22,6 +22,9 @@
     <string name="metric_angle">%1$d°</string>
     <string name="metric_empty">—</string>
     <string name="pose_detected">Суставы обнаружены</string>
+    <string name="pose_acquiring">Определяем положение тела</string>
+    <string name="no_person">Человек в кадре не обнаружен</string>
+    <string name="pose_timeout">Распознавание позы задерживается</string>
     <string name="retry_save">Сохранить</string>
     <string name="thresholds">Пороги углов</string>
     <string name="apply">Применить</string>

@@ -8,9 +8,10 @@ final class MoveNetEstimator implements PoseEstimator {
     private static final int SIZE = 192;
     private final ByteBuffer model;
     private final ByteBuffer input = ByteBuffer.allocateDirect(SIZE * SIZE * 3);
+    private final FramePreprocessor preprocessing = new FramePreprocessor(SIZE, input, false);
     private final float[] output = new float[Pose.SIZE * 3];
     private final long handle;
-    private long inferenceNanos;
+    private long inferenceNanos, preprocessingNanos;
 
     MoveNetEstimator(ByteBuffer model) {
         this.model = model;
@@ -21,10 +22,12 @@ final class MoveNetEstimator implements PoseEstimator {
     @Override public int size() { return SIZE; }
 
     @Override public Pose estimate(Frame frame, FrameTransform transform) {
-        FramePreprocessor.fill(frame, transform, input, false);
         long start = System.nanoTime();
+        preprocessing.fill(frame, transform);
+        long prepared = System.nanoTime();
+        preprocessingNanos = prepared - start;
         if (!run(handle, input, output)) throw new IllegalStateException("MoveNet inference failed");
-        inferenceNanos = System.nanoTime() - start;
+        inferenceNanos = System.nanoTime() - prepared;
         Pose pose = new Pose();
         for (int i = 0; i < Pose.SIZE; i++) {
             pose.y[i] = transform.uprightY(output[i * 3]);
@@ -36,6 +39,7 @@ final class MoveNetEstimator implements PoseEstimator {
 
     @Override public void close() { destroy(handle); }
     @Override public long inferenceNanos() { return inferenceNanos; }
+    @Override public long preprocessingNanos() { return preprocessingNanos; }
 
     private static native long create(ByteBuffer model);
     private static native boolean run(long handle, ByteBuffer input, float[] output);

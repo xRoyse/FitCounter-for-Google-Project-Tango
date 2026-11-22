@@ -1,0 +1,258 @@
+{
+  "device": "Android SDK built for x86",
+  "fixtures": [
+    {
+      "id": "squat-dvids",
+      "inference_p95_us": 688351,
+      "loss_intervals_ms": [],
+      "confirmed": 124,
+      "frames": 125,
+      "repetitions_ms": [
+        3250,
+        6125,
+        9250,
+        12375,
+        15250
+      ],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 0,
+      "inference_p50_us": 312422,
+      "final_status": "TRACKING",
+      "expected_completion_ms": [
+        [
+          2550,
+          3550
+        ],
+        [
+          5650,
+          6550
+        ],
+        [
+          8550,
+          9750
+        ],
+        [
+          11600,
+          12750
+        ],
+        [
+          14800,
+          15625
+        ]
+      ]
+    },
+    {
+      "id": "push-mendeley",
+      "inference_p95_us": 341777,
+      "loss_intervals_ms": [],
+      "confirmed": 110,
+      "frames": 111,
+      "repetitions_ms": [
+        4250,
+        6500,
+        8625,
+        11125,
+        13375
+      ],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 0,
+      "inference_p50_us": 315325,
+      "final_status": "TRACKING",
+      "expected_completion_ms": [
+        [
+          3700,
+          4450
+        ],
+        [
+          6200,
+          6850
+        ],
+        [
+          8250,
+          9100
+        ],
+        [
+          10550,
+          11500
+        ],
+        [
+          13000,
+          13875
+        ]
+      ]
+    },
+    {
+      "id": "fast-squat",
+      "inference_p95_us": 380033,
+      "loss_intervals_ms": [],
+      "confirmed": 85,
+      "frames": 86,
+      "repetitions_ms": [
+        2250,
+        4500,
+        6500,
+        8500,
+        10625
+      ],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 0,
+      "inference_p50_us": 314582,
+      "final_status": "TRACKING",
+      "expected_completion_ms": [
+        [
+          1750,
+          2550
+        ],
+        [
+          3850,
+          4700
+        ],
+        [
+          5800,
+          6800
+        ],
+        [
+          7900,
+          8950
+        ],
+        [
+          10100,
+          10750
+        ]
+      ]
+    },
+    {
+      "id": "occluded-push",
+      "inference_p95_us": 331866,
+      "loss_intervals_ms": [
+        [
+          625,
+          875
+        ],
+        [
+          1250,
+          1625
+        ]
+      ],
+      "confirmed": 108,
+      "frames": 111,
+      "repetitions_ms": [
+        4250,
+        6500,
+        8625,
+        11125,
+        13375
+      ],
+      "missing_angle_frames_by_interval": [
+        3,
+        1
+      ],
+      "warnings": 0,
+      "inference_p50_us": 310237,
+      "final_status": "TRACKING",
+      "expected_completion_ms": [
+        [
+          3700,
+          4450
+        ],
+        [
+          6200,
+          6850
+        ],
+        [
+          8250,
+          9100
+        ],
+        [
+          10550,
+          11500
+        ],
+        [
+          13000,
+          13875
+        ]
+      ]
+    },
+    {
+      "id": "moving-objects",
+      "inference_p95_us": 315718,
+      "loss_intervals_ms": [],
+      "confirmed": 0,
+      "frames": 20,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 1,
+      "inference_p50_us": 310589,
+      "final_status": "NO_PERSON",
+      "expected_completion_ms": []
+    },
+    {
+      "id": "empty-room",
+      "inference_p95_us": 318440,
+      "loss_intervals_ms": [],
+      "confirmed": 0,
+      "frames": 10,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 1,
+      "inference_p50_us": 314585,
+      "final_status": "NO_PERSON",
+      "expected_completion_ms": []
+    },
+    {
+      "id": "furniture",
+      "inference_p95_us": 318120,
+      "loss_intervals_ms": [],
+      "confirmed": 0,
+      "frames": 10,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 1,
+      "inference_p50_us": 315363,
+      "final_status": "NO_PERSON",
+      "expected_completion_ms": []
+    },
+    {
+      "id": "tile-holdout",
+      "inference_p95_us": 335224,
+      "loss_intervals_ms": [],
+      "confirmed": 0,
+      "frames": 10,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 1,
+      "inference_p50_us": 315793,
+      "final_status": "NO_PERSON",
+      "expected_completion_ms": []
+    },
+    {
+      "id": "photo-person",
+      "inference_p95_us": 325050,
+      "loss_intervals_ms": [],
+      "confirmed": 9,
+      "frames": 10,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 0,
+      "inference_p50_us": 313715,
+      "final_status": "TRACKING",
+      "expected_completion_ms": []
+    },
+    {
+      "id": "still-squat",
+      "inference_p95_us": 432844,
+      "loss_intervals_ms": [],
+      "confirmed": 9,
+      "frames": 10,
+      "repetitions_ms": [],
+      "missing_angle_frames_by_interval": [],
+      "warnings": 0,
+      "inference_p50_us": 316111,
+      "final_status": "TRACKING",
+      "expected_completion_ms": []
+    }
+  ],
+  "estimator": "MoveNetEstimator",
+  "sdk": 19,
+  "errors": []
+}

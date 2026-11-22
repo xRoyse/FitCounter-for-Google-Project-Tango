@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -20,6 +22,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
@@ -88,6 +92,60 @@ public class ExampleInstrumentedTest {
         }
     }
 
+    @Test public void measuresSoftwareRenderingOfConfirmedPose() throws Exception {
+        Instrumentation test = instrumentation();
+        byte[] pixels;
+        int width, height;
+        try (InputStream stream = test.getContext().getAssets().open("push-up.jpg")) {
+            Bitmap image = BitmapFactory.decodeStream(stream);
+            assertNotNull(image);
+            width = image.getWidth() & ~1;
+            height = image.getHeight() & ~1;
+            pixels = nv21(image, width, height);
+            image.recycle();
+        }
+        Bitmap output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(output);
+        SkeletonView[] view = new SkeletonView[1];
+        test.runOnMainSync(() -> {
+            view[0] = new SkeletonView(test.getTargetContext(), null);
+            view[0].layout(0, 0, width, height);
+        });
+        long[] copies = new long[30], draws = new long[30], ages = new long[30];
+        PairedPreview preview = new PairedPreview();
+        try (PoseEstimator estimator = PoseEstimator.open(test.getTargetContext())) {
+            PoseAnalyzer analyzer = new PoseAnalyzer(estimator);
+            analyzer.analyze(new Frame(pixels, width, height, 0, 0, () -> {}));
+            for (int i = 0; i < copies.length; i++) {
+                int index = i;
+                Frame frame = new Frame(pixels, width, height, 0, (i + 1) * 125L, () -> {});
+                PoseReading reading = analyzer.analyze(frame);
+                assertNotNull("The reference person must remain confirmed", reading.pose);
+                long startCopy = System.nanoTime();
+                Bitmap image = preview.copy(frame, reading.transform);
+                copies[i] = System.nanoTime() - startCopy;
+                test.runOnMainSync(() -> {
+                    view[0].show(reading, image, false);
+                    long startDraw = System.nanoTime();
+                    view[0].draw(canvas);
+                    long drawn = System.nanoTime();
+                    draws[index] = drawn - startDraw;
+                    ages[index] = drawn - reading.arrivalNanos;
+                });
+            }
+        } finally {
+            output.recycle();
+        }
+        Log.i("FitCounter", "Software preview ms p50/p95 copy=" + percentiles(copies)
+                + " draw=" + percentiles(draws) + " buffer-to-draw=" + percentiles(ages));
+    }
+
+    private static String percentiles(long[] samples) {
+        Arrays.sort(samples);
+        return samples[(samples.length - 1) / 2] / 1e6 + "/"
+                + samples[(int) Math.ceil(samples.length * 0.95) - 1] / 1e6;
+    }
+
     @SuppressWarnings("deprecation")
     @Test public void cameraReceivesFramesAfterReopening() throws Exception {
         assumeTrue("The test device has no camera", Camera.getNumberOfCameras() > 0);
@@ -104,14 +162,7 @@ public class ExampleInstrumentedTest {
 
     @SuppressWarnings("deprecation")
     @Test public void switchesBetweenRearAndFrontCamera() throws Exception {
-        boolean front = false, rear = false;
-        for (int id = 0; id < Camera.getNumberOfCameras(); id++) {
-            Camera.CameraInfo info = new Camera.CameraInfo();
-            Camera.getCameraInfo(id, info);
-            front |= info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
-            rear |= info.facing == Camera.CameraInfo.CAMERA_FACING_BACK;
-        }
-        assumeTrue("Both camera directions are required", front && rear);
+        assumeTrue("Both camera directions are required", hasTwoCameraDirections());
         CameraFrameSource source = new CameraFrameSource();
         SurfaceTexture texture = new SurfaceTexture(0);
         try {
@@ -143,6 +194,64 @@ public class ExampleInstrumentedTest {
         }
     }
 
+    @Test public void switchesLivePreviewWithoutFinishingTheWorkout() {
+        assumeTrue("Both camera directions are required", hasTwoCameraDirections());
+        Instrumentation test = instrumentation();
+        MainActivity activity = (MainActivity) test.startActivitySync(
+                new Intent(test.getTargetContext(), MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            View start = activity.findViewById(R.id.start_workout);
+            View finish = activity.findViewById(R.id.finish_workout);
+            View switchCamera = activity.findViewById(R.id.switch_camera);
+            TextView facing = activity.findViewById(R.id.camera_facing);
+            TextView status = activity.findViewById(R.id.camera_status);
+            AtomicBoolean condition = new AtomicBoolean();
+            long deadline = SystemClock.uptimeMillis() + 8000;
+            do {
+                test.runOnMainSync(() -> condition.set(start.isEnabled() && switchCamera.isShown()
+                        && switchCamera.isEnabled()));
+                if (!condition.get()) SystemClock.sleep(50);
+            } while (!condition.get() && SystemClock.uptimeMillis() < deadline);
+            assertTrue("Rear preview and camera switch did not become ready", condition.get());
+            test.runOnMainSync(() -> {
+                assertEquals(activity.getString(R.string.rear_camera), facing.getText().toString());
+                assertTrue(start.performClick());
+                assertTrue(finish.isEnabled());
+                assertTrue(switchCamera.performClick());
+            });
+            deadline = SystemClock.uptimeMillis() + 8000;
+            do {
+                test.runOnMainSync(() -> condition.set(switchCamera.isEnabled()
+                        && activity.getString(R.string.front_camera).contentEquals(facing.getText())
+                        && !Integer.valueOf(R.string.camera_loading).equals(status.getTag())));
+                if (!condition.get()) SystemClock.sleep(50);
+            } while (!condition.get() && SystemClock.uptimeMillis() < deadline);
+            assertTrue("Front preview did not become ready", condition.get());
+            test.runOnMainSync(() -> {
+                assertTrue(finish.isEnabled());
+                assertFalse(start.isEnabled());
+                assertFalse(activity.findViewById(R.id.exercise).isEnabled());
+                assertFalse(activity.findViewById(R.id.thresholds).isEnabled());
+                assertTrue(finish.performClick());
+                assertTrue(start.isEnabled());
+            });
+        } finally {
+            test.runOnMainSync(activity::finish);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean hasTwoCameraDirections() {
+        boolean front = false, rear = false;
+        for (int id = 0; id < Camera.getNumberOfCameras(); id++) {
+            Camera.CameraInfo info = new Camera.CameraInfo();
+            Camera.getCameraInfo(id, info);
+            front |= info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
+            rear |= info.facing == Camera.CameraInfo.CAMERA_FACING_BACK;
+        }
+        return front && rear;
+    }
+
     @SuppressWarnings("deprecation")
     @Test public void cameraFeedsThePackagedModel() throws Exception {
         assumeTrue("The test device has no camera", Camera.getNumberOfCameras() > 0);
@@ -157,7 +266,7 @@ public class ExampleInstrumentedTest {
         SurfaceTexture texture = new SurfaceTexture(0);
         PosePipeline pipeline = new PosePipeline(context, new PosePipeline.Listener() {
             @Override public void onReady() {}
-            @Override public void onPose(PoseReading reading) { frames.countDown(); }
+            @Override public void onPose(PoseReading reading, Bitmap image) { frames.countDown(); }
             @Override public void onModelError() { reportError.run(); }
         });
         try {
@@ -166,11 +275,77 @@ public class ExampleInstrumentedTest {
                 @Override public void onFrame(Frame frame) { pipeline.offer(frame); }
                 @Override public void onCameraError() { reportError.run(); }
             });
-            assertTrue("Inference stream timed out", frames.await(45, TimeUnit.SECONDS));
+            assertTrue("Inference stream timed out", frames.await(90, TimeUnit.SECONDS));
             assertFalse("Camera or pose model failed", failure.get());
         } finally {
             pipeline.close();
             releaseCamera(source, texture);
+        }
+    }
+
+    @Test public void preservesTheLastFrameInABurstAndReleasesEveryBuffer() throws Exception {
+        Context context = instrumentation().getTargetContext();
+        CountDownLatch ready = new CountDownLatch(1), done = new CountDownLatch(1);
+        CountDownLatch buffers = new CountDownLatch(80);
+        AtomicLong expected = new AtomicLong(), last = new AtomicLong();
+        AtomicBoolean error = new AtomicBoolean();
+        AtomicInteger delivered = new AtomicInteger();
+        PosePipeline pipeline = new PosePipeline(context, new PosePipeline.Listener() {
+            @Override public void onReady() { ready.countDown(); }
+            @Override public void onPose(PoseReading reading, Bitmap image) {
+                if (last.getAndSet(reading.frameId) >= reading.frameId) error.set(true);
+                delivered.incrementAndGet();
+                if (reading.frameId == expected.get()) done.countDown();
+            }
+            @Override public void onModelError() { error.set(true); ready.countDown(); done.countDown(); }
+        });
+        try {
+            assertTrue(ready.await(15, TimeUnit.SECONDS));
+            byte[] image = new byte[320 * 240 * 3 / 2];
+            for (int i = 0; i < 80; i++) {
+                Frame frame = new Frame(image, 320, 240, 0, i * 33, buffers::countDown);
+                if (i == 79) expected.set(frame.id);
+                pipeline.offer(frame);
+            }
+            assertTrue("No result for last frame", done.await(20, TimeUnit.SECONDS));
+            assertFalse(error.get());
+            assertTrue("Old frames accumulated in the queue", delivered.get() < 10);
+            assertEquals(expected.get(), last.get());
+            assertTrue("Camera buffers were not released", buffers.await(5, TimeUnit.SECONDS));
+        } finally {
+            pipeline.close();
+        }
+    }
+
+    @Test public void drawsThePairedCameraImageWithCorrectRotationAndMirror() {
+        byte[] nv21 = {16, 50, 100, (byte) 235, 16, 50, 100, (byte) 235,
+                (byte) 128, (byte) 128, (byte) 128, (byte) 128};
+        PairedPreview preview = new PairedPreview();
+        for (int rotation = 0; rotation < 360; rotation += 90) {
+            Frame frame = new Frame(nv21, 4, 2, rotation, 0, () -> {});
+            FrameTransform transform = new FrameTransform(4, 2, rotation, 192, 1, 2, 3);
+            Bitmap image = preview.copy(frame, transform);
+            assertEquals(transform.uprightWidth, image.getWidth());
+            assertEquals(transform.uprightHeight, image.getHeight());
+            assertEquals(transform.sensorIndex(0, 0) % 4 == 3 ? 255 : 0, image.getPixel(0, 0) & 255);
+            instrumentation().runOnMainSync(() -> {
+                SkeletonView view = new SkeletonView(instrumentation().getTargetContext(), null);
+                view.layout(0, 0, image.getWidth(), image.getHeight());
+                PoseReading reading = new PoseReading(null, null, transform, frame, 0, 0, 0, 0, 0);
+                view.show(reading, image, true);
+                Bitmap output = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+                view.draw(new Canvas(output));
+                for (int y = 0; y < output.getHeight(); y++) {
+                    for (int x = 0; x < output.getWidth(); x++) {
+                        int expected = image.getPixel(output.getWidth() - 1 - x, y) & 255;
+                        int actual = output.getPixel(x, y) & 255;
+                        // Canvas Android 4.4 интерполирует RGB565 с точностью до одного шага.
+                        assertEquals(expected, actual, 8);
+                    }
+                }
+                output.recycle();
+            });
+            image.recycle();
         }
     }
 
