@@ -1,0 +1,57 @@
+<resources>
+    <string name="app_name">FitCounter</string>
+    <string name="training">Тренировка</string>
+    <string name="calendar">Календарь</string>
+    <string name="statistics">Статистика</string>
+    <string name="exercise_label">Упражнение</string>
+    <string name="push_up">Отжимания</string>
+    <string name="squat">Приседания</string>
+    <string name="push_up_hint">Встаньте сбоку к камере. Плечо, локоть, запястье и бедро должны быть видны.</string>
+    <string name="squat_hint">Встаньте боком или вполоборота. Бедро, колено и лодыжка должны быть видны.</string>
+    <string name="start">Начать</string>
+    <string name="finish">Завершить</string>
+    <string name="reset">Сбросить</string>
+    <string name="retry">Повторить</string>
+    <string name="retry_save">Сохранить</string>
+    <string name="thresholds">Пороги углов</string>
+    <string name="apply">Применить</string>
+    <string name="restore_defaults">По умолчанию</string>
+    <string name="upper_threshold">Верхний порог, градусы</string>
+    <string name="lower_threshold">Нижний порог, градусы</string>
+    <string name="threshold_error">Допустимо от 45° до 180°. Разница должна быть не менее 30°.</string>
+    <string name="preview_label">Видео с камеры</string>
+    <string name="completed_reps">Повторения: %1$d</string>
+    <string name="current_angle">Угол: %1$d°</string>
+    <string name="unknown_angle">Угол: —</string>
+    <string name="idle">Подход не начат</string>
+    <string name="find_start">Займите исходное положение</string>
+    <string name="ready">Верхняя фаза</string>
+    <string name="lowering">Вниз</string>
+    <string name="bottom">Глубина достигнута</string>
+    <string name="rising">Вверх</string>
+    <string name="saving">Сохранение подхода…</string>
+    <string name="saved">Подход сохранён</string>
+    <string name="empty_workout">Подход завершён без повторений</string>
+    <string name="save_error">Ошибка сохранения. Повторите попытку.</string>
+    <string name="camera_loading">Открываем камеру и модель…</string>
+    <string name="camera_error">Цветная камера недоступна. Закройте другие приложения с камерой и повторите.</string>
+    <string name="camera_permission">Разрешите доступ к камере в настройках Android.</string>
+    <string name="model_error">Модель позы не запустилась. Проверьте совместимость устройства и повторите.</string>
+    <string name="no_pose">Суставы не видны. Проверьте положение в кадре и освещение.</string>
+    <string name="previous_month">Предыдущий месяц</string>
+    <string name="next_month">Следующий месяц</string>
+    <string name="previous_arrow">‹</string>
+    <string name="next_arrow">›</string>
+    <string name="trained_day">%1$d, есть тренировки</string>
+    <string name="calendar_marked">%1$s ·</string>
+    <string name="loading_history">Загрузка…</string>
+    <string name="history_error">Не удалось прочитать историю.</string>
+    <string name="empty_day">За этот день тренировок нет.</string>
+    <string name="history_entry">%1$s · %2$s · %3$d</string>
+    <string name="week">Текущая неделя</string>
+    <string name="month">Текущий месяц</string>
+    <string name="totals">Отжимания: %1$d\nПриседания: %2$d</string>
+    <string-array name="weekdays">
+        <item>Пн</item><item>Вт</item><item>Ср</item><item>Чт</item><item>Пт</item><item>Сб</item><item>Вс</item>
+    </string-array>
+</resources>

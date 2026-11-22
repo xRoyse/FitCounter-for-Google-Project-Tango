@@ -1,0 +1,13 @@
+FitCounter uses Google pose models and TensorFlow Lite.
+
+MoveNet SinglePose Lightning, INT8 export: Google, Apache License 2.0.
+https://www.kaggle.com/models/google/movenet
+
+PoseNet MobileNetV1: Google / TensorFlow Examples, Apache License 2.0.
+https://github.com/tensorflow/tfjs-models/tree/master/posenet
+https://github.com/tensorflow/examples/blob/master/lite/examples/pose_estimation/android/app/download.gradle
+
+TensorFlow Lite: The TensorFlow Authors, Apache License 2.0.
+https://github.com/tensorflow/tensorflow
+
+The APK includes the model selected at build time.

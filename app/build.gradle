@@ -1,0 +1,57 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+def poseBackend = providers.gradleProperty('poseBackend').getOrElse('movenet')
+if (!(poseBackend in ['posenet', 'movenet'])) {
+    throw new GradleException('poseBackend must be posenet or movenet')
+}
+
+android {
+    namespace 'com.example.fitcounter'
+    compileSdk {
+        version = release(37)
+    }
+
+    defaultConfig {
+        applicationId 'com.example.fitcounter'
+        minSdk 19
+        targetSdk 37
+        versionCode 1
+        versionName '1.0'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    sourceSets {
+        main.assets.srcDir "src/${poseBackend}/assets"
+        main.java.srcDir "src/${poseBackend}/java"
+        if (poseBackend == 'movenet') main.jniLibs.srcDir 'src/movenet/jniLibs'
+    }
+
+    androidResources {
+        noCompress 'tflite'
+    }
+
+    buildTypes {
+        release {
+            optimization {
+                enable false
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    if (poseBackend == 'posenet') implementation 'org.tensorflow:tensorflow-lite:1.13.1'
+    testImplementation libs.junit
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+}
