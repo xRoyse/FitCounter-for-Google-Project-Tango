@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <color name="ui_canvas">#F8F4ED</color>
+    <color name="ui_paper">#FFFDF8</color>
+    <color name="ui_graphite">#172E29</color>
+    <color name="ui_muted">#53665E</color>
+    <color name="ui_line">#DEDED2</color>
+    <color name="ui_emerald">#075747</color>
+    <color name="ui_moss">#E4EDE3</color>
+    <color name="ui_coral">#A53A24</color>
+    <color name="ui_peach">#FBE5DC</color>
+    <color name="ui_video">#142621</color>
+</resources>

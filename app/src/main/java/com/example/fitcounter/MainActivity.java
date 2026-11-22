@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     private PreviewPane preview;
     private SkeletonView skeleton;
     private Spinner selector;
-    private TextView repetitions, angle, phase, hint, cameraStatus, saveMessage;
+    private TextView repetitions, angle, angleLabel, phase, hint, cameraFacingLabel, cameraStatus, saveMessage;
     private Button start, finish, reset, retry, thresholds, switchCamera;
     private FrameSource.Facing cameraFacing;
     private boolean canSwitchCamera;
@@ -90,10 +90,12 @@ public class MainActivity extends Activity {
         texture = findViewById(R.id.camera_texture);
         repetitions = findViewById(R.id.repetitions);
         angle = findViewById(R.id.angle);
+        angleLabel = findViewById(R.id.angle_label);
         phase = findViewById(R.id.phase);
         hint = findViewById(R.id.hint);
         saveMessage = findViewById(R.id.save_message);
         cameraStatus = findViewById(R.id.camera_status);
+        cameraFacingLabel = findViewById(R.id.camera_facing);
         start = findViewById(R.id.start_workout);
         finish = findViewById(R.id.finish_workout);
         reset = findViewById(R.id.reset_workout);
@@ -193,7 +195,9 @@ public class MainActivity extends Activity {
         int previous = tab;
         tab = index;
         for (int i = 0; i < TAB_IDS.length; i++) {
-            findViewById(TAB_IDS[i]).setEnabled(i != tab);
+            View navigation = findViewById(TAB_IDS[i]);
+            navigation.setSelected(i == tab);
+            navigation.setEnabled(i != tab);
             findViewById(SCREEN_IDS[i]).setVisibility(i == tab ? View.VISIBLE : View.GONE);
         }
         if (tab == 0) {
@@ -398,16 +402,35 @@ public class MainActivity extends Activity {
         reset.setEnabled(running || !pending && session.repetitions() > 0);
         thresholds.setEnabled(!running && !pending);
         selector.setEnabled(!running && !pending);
-        repetitions.setText(getString(R.string.completed_reps, session.repetitions()));
+        String count = getString(R.string.metric_number, session.repetitions());
+        if (!count.contentEquals(repetitions.getText())) {
+            repetitions.setText(count);
+            repetitions.setContentDescription(getString(R.string.completed_reps, session.repetitions()));
+        }
         boolean hasAngle = !Double.isNaN(session.angle());
-        angle.setText(hasAngle ? getString(R.string.current_angle, Math.round(session.angle()))
-                : getString(R.string.unknown_angle));
-        phase.setText(running ? PHASE_LABELS[session.phase().ordinal()] : pending
+        String measure = hasAngle ? getString(R.string.metric_angle, Math.round(session.angle()))
+                : getString(R.string.metric_empty);
+        if (!measure.contentEquals(angle.getText())) {
+            angle.setText(measure);
+            angle.setContentDescription(hasAngle ? getString(R.string.current_angle, Math.round(session.angle()))
+                    : getString(R.string.unknown_angle));
+        }
+        setLabel(angleLabel, exercise == Exercise.PUSH_UP ? R.string.elbow_label : R.string.knee_label);
+        setLabel(phase, running ? PHASE_LABELS[session.phase().ordinal()] : pending
                 ? (saving ? R.string.saving : R.string.save_error) : R.string.idle);
-        hint.setText(exercise.hint);
+        setLabel(hint, exercise.hint);
         showMessage(saveMessage, pending ? 0 : workoutMessage);
-        showMessage(cameraStatus, cameraError != 0 ? cameraError : !ready
-                ? R.string.camera_loading : !hasAngle ? R.string.no_pose : 0);
+        int status = cameraError != 0 ? cameraError : !ready
+                ? R.string.camera_loading : !hasAngle ? R.string.no_pose : R.string.pose_detected;
+        if (!Integer.valueOf(status).equals(cameraStatus.getTag())) {
+            boolean warning = cameraError != 0 || status == R.string.no_pose;
+            cameraStatus.setBackgroundResource(warning ? R.drawable.ui_warn : R.drawable.ui_good);
+            cameraStatus.setTextColor(getResources().getColor(warning ? R.color.ui_coral : R.color.ui_emerald));
+            cameraStatus.setText(status);
+            cameraStatus.setTag(status);
+        }
+        setLabel(cameraFacingLabel, cameraReady ? (mirror ? R.string.front_camera : R.string.rear_camera)
+                : R.string.preview_label);
         retry.setVisibility(cameraError != 0 ? View.VISIBLE : View.GONE);
         switchCamera.setVisibility(canSwitchCamera && hasPermission() ? View.VISIBLE : View.GONE);
         switchCamera.setEnabled(cameraReady || cameraError != 0);
@@ -415,7 +438,13 @@ public class MainActivity extends Activity {
 
     private void showMessage(TextView view, int message) {
         view.setVisibility(message == 0 ? View.GONE : View.VISIBLE);
-        if (message != 0) view.setText(message);
+        if (message != 0) setLabel(view, message);
+    }
+
+    private void setLabel(TextView view, int text) {
+        if (Integer.valueOf(text).equals(view.getTag())) return;
+        view.setText(text);
+        view.setTag(text);
     }
 
     private int upper() { return settings.getInt(exercise.name() + "_upper", exercise.straight); }

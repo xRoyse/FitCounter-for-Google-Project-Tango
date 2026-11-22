@@ -1,12 +1,11 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/calendar_screen" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-            <Button android:id="@+id/previous_month" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="@string/previous_month" android:text="@string/previous_arrow"/>
-            <TextView android:id="@+id/month_label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="20sp" android:textStyle="bold"/>
-            <Button android:id="@+id/next_month" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="@string/next_month" android:text="@string/next_arrow"/>
+<?xml version='1.0' encoding='utf-8'?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/calendar_screen" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+        <TextView style="@style/FitCounter.Title" android:text="@string/calendar" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:baselineAligned="false">
+            <include layout="@layout/calendar_month" />
+            <Space android:layout_width="1dp" android:layout_height="14dp" />
+            <include layout="@layout/calendar_day" />
         </LinearLayout>
-        <LinearLayout android:id="@+id/calendar_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
-        <TextView android:id="@+id/selected_date" style="@style/FitCounter.Line" android:layout_marginTop="12dp" android:textStyle="bold"/>
-        <TextView android:id="@+id/day_history" style="@style/FitCounter.Line" />
     </LinearLayout>
 </ScrollView>

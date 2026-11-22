@@ -1,5 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <style name="Theme.FitCounter" parent="android:style/Theme.Holo.Light.NoActionBar">
-        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowBackground">@color/ui_canvas</item>
+        <item name="android:textColorPrimary">@color/ui_graphite</item>
+        <item name="android:textColorSecondary">@color/ui_muted</item>
     </style>
 </resources>

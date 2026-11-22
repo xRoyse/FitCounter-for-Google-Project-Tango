@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <View android:layout_width="match_parent" android:layout_height="3dp" android:background="@color/ui_emerald" />
+    <TextView style="@style/FitCounter.Caption" android:layout_marginTop="9dp" android:labelFor="@+id/exercise" android:text="@string/exercise_label" />
+    <Spinner android:id="@id/exercise" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:paddingStart="8dp" android:paddingEnd="8dp" android:popupBackground="@drawable/ui_card" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="bottom" android:baselineAligned="false" android:layout_marginTop="5dp" android:layout_marginBottom="8dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.3" android:orientation="vertical">
+            <TextView android:id="@+id/repetitions" style="@style/FitCounter.Metric" />
+            <TextView style="@style/FitCounter.Caption" android:text="@string/repetitions_label" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/angle" style="@style/FitCounter.Metric" android:textSize="39sp" android:textColor="@color/ui_graphite" />
+            <TextView android:id="@+id/angle_label" style="@style/FitCounter.Caption" android:text="@string/elbow_label" />
+        </LinearLayout>
+    </LinearLayout>
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/ui_line" />
+    <TextView android:id="@+id/phase" style="@style/FitCounter.Line" android:layout_marginTop="8dp" android:textStyle="bold" />
+    <TextView android:id="@+id/hint" style="@style/FitCounter.Caption" android:layout_marginTop="4dp" android:layout_marginBottom="9dp" />
+    <TextView android:id="@+id/save_message" style="@style/FitCounter.Line" />
+    <Button android:id="@+id/start_workout" style="@style/FitCounter.Button" android:text="@string/start" android:layout_width="match_parent" android:background="@drawable/ui_primary" android:textColor="@color/ui_primary_text" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp">
+        <Button android:id="@+id/finish_workout" style="@style/FitCounter.Button" android:text="@string/finish" android:layout_width="0dp" android:layout_weight="1" />
+        <Space android:layout_width="6dp" android:layout_height="1dp" />
+        <Button android:id="@+id/reset_workout" style="@style/FitCounter.Button" android:text="@string/reset" android:layout_width="0dp" android:layout_weight="1" />
+    </LinearLayout>
+    <Button android:id="@+id/thresholds" style="@style/FitCounter.Button" android:text="@string/thresholds" android:background="@drawable/ui_nav" android:textColor="@color/ui_emerald" />
+</LinearLayout>

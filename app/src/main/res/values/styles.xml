@@ -1,21 +1,46 @@
-<resources>
-    <style name="FitCounter" />
-    <style name="FitCounter.Nav" parent="android:style/Widget.Holo.Button">
-        <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_weight">1</item>
-        <item name="android:minWidth">0dp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:paddingLeft">2dp</item>
-        <item name="android:paddingRight">2dp</item>
-        <item name="android:textSize">13sp</item>
-    </style>
-    <style name="FitCounter.Line">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:paddingTop">3dp</item>
-        <item name="android:paddingBottom">3dp</item>
-        <item name="android:textColor">@color/black</item>
-        <item name="android:textSize">16sp</item>
-    </style>
+<resources><style name="FitCounter">
+</style>
+<style name="FitCounter.Button" parent="android:style/Widget.Holo.Button">
+    <item name="android:layout_width">wrap_content</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:minHeight">48dp</item>
+    <item name="android:minWidth">0dp</item>
+    <item name="android:background">@drawable/ui_button</item>
+    <item name="android:textColor">@color/ui_graphite</item>
+    <item name="android:textSize">15sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:paddingStart">8dp</item>
+    <item name="android:paddingEnd">8dp</item>
+</style>
+<style name="FitCounter.Nav" parent="FitCounter.Button">
+    <item name="android:layout_width">0dp</item>
+    <item name="android:layout_weight">1</item>
+    <item name="android:background">@drawable/ui_nav</item>
+    <item name="android:textColor">@color/ui_emerald</item>
+    <item name="android:textSize">14sp</item>
+    <item name="android:paddingStart">3dp</item>
+    <item name="android:paddingEnd">3dp</item>
+</style>
+<style name="FitCounter.Line">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:textColor">@color/ui_graphite</item>
+    <item name="android:textSize">16sp</item>
+</style>
+<style name="FitCounter.Title" parent="FitCounter.Line">
+    <item name="android:textStyle">bold</item>
+    <item name="android:textSize">28sp</item>
+    <item name="android:layout_marginBottom">14dp</item>
+</style>
+<style name="FitCounter.Caption" parent="FitCounter.Line">
+    <item name="android:textColor">@color/ui_muted</item>
+    <item name="android:textSize">14sp</item>
+</style>
+<style name="FitCounter.Metric" parent="FitCounter.Line">
+    <item name="android:textStyle">bold</item>
+    <item name="android:fontFamily">sans-serif-condensed</item>
+    <item name="android:textColor">@color/ui_emerald</item>
+    <item name="android:textSize">58sp</item>
+    <item name="android:includeFontPadding">false</item>
+</style>
 </resources>

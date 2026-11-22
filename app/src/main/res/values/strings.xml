@@ -13,6 +13,15 @@
     <string name="reset">Сбросить</string>
     <string name="retry">Повторить</string>
     <string name="switch_camera">Переключить камеру</string>
+    <string name="rear_camera">Задняя камера</string>
+    <string name="front_camera">Передняя камера</string>
+    <string name="repetitions_label">Повторения</string>
+    <string name="elbow_label">Угол локтя</string>
+    <string name="knee_label">Угол колена</string>
+    <string name="metric_number">%1$d</string>
+    <string name="metric_angle">%1$d°</string>
+    <string name="metric_empty">—</string>
+    <string name="pose_detected">Суставы обнаружены</string>
     <string name="retry_save">Сохранить</string>
     <string name="thresholds">Пороги углов</string>
     <string name="apply">Применить</string>

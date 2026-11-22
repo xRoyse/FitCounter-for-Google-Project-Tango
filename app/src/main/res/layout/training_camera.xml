@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/ui_camera" android:padding="8dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:paddingStart="8dp">
+            <TextView android:id="@+id/camera_facing" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/preview_label" android:textColor="#F4F2E9" android:textSize="15sp" android:textStyle="bold" />
+            <com.example.fitcounter.CameraSwitchButton android:id="@+id/switch_camera" android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/ui_flip" android:contentDescription="@string/switch_camera" android:visibility="gone" />
+        </LinearLayout>
+        <com.example.fitcounter.PreviewPane android:id="@+id/preview" android:layout_width="match_parent" android:layout_height="@dimen/training_preview_height" android:background="#203A31">
+            <TextureView android:id="@+id/camera_texture" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@string/preview_label" />
+            <com.example.fitcounter.SkeletonView android:id="@+id/skeleton" android:layout_width="match_parent" android:layout_height="match_parent" />
+        </com.example.fitcounter.PreviewPane>
+    </LinearLayout>
+    <TextView android:id="@+id/camera_status" style="@style/FitCounter.Line" android:layout_marginTop="8dp" android:minHeight="48dp" android:gravity="center_vertical" android:padding="10dp" />
+    <Button android:id="@+id/retry_camera" style="@style/FitCounter.Button" android:text="@string/retry" android:layout_marginTop="6dp" android:visibility="gone" />
+</LinearLayout>

@@ -1,7 +1,6 @@
 package com.example.fitcounter;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -19,8 +18,10 @@ import java.util.Set;
 import java.util.TimeZone;
 
 final class HistoryView {
+    private static final Locale RUSSIAN = new Locale("ru", "RU");
     private final Context context;
     private final TextView monthLabel, dateLabel, dayHistory, weekStats, monthStats;
+    private final TextView[][] totals;
     private final LinearLayout calendarGrid;
     private final WorkoutRepository repository;
     private Calendar month, selected;
@@ -34,6 +35,10 @@ final class HistoryView {
         dayHistory = activity.findViewById(R.id.day_history);
         weekStats = activity.findViewById(R.id.week_stats);
         monthStats = activity.findViewById(R.id.month_stats);
+        totals = new TextView[][]{
+                {activity.findViewById(R.id.week_push), activity.findViewById(R.id.week_squat)},
+                {activity.findViewById(R.id.month_push), activity.findViewById(R.id.month_squat)}
+        };
         calendarGrid = activity.findViewById(R.id.calendar_grid);
         long now = System.currentTimeMillis();
         TimeZone zone = TimeZone.getDefault();
@@ -56,7 +61,8 @@ final class HistoryView {
         long dayStart = selected.getTimeInMillis();
         long dayEnd = DateRanges.next(selected, Calendar.DAY_OF_MONTH, 1);
         TimeZone zone = month.getTimeZone();
-        monthLabel.setText(format("LLLL yyyy", month));
+        String monthName = format("LLLL yyyy", month);
+        monthLabel.setText(monthName.substring(0, 1).toUpperCase(RUSSIAN) + monthName.substring(1));
         dateLabel.setText(format("d MMMM yyyy", selected));
         dayHistory.setText(R.string.loading_history);
         drawCalendar(Collections.emptySet());
@@ -80,6 +86,7 @@ final class HistoryView {
             TextView label = new TextView(context);
             label.setGravity(Gravity.CENTER);
             label.setText(title);
+            label.setTextColor(context.getResources().getColor(R.color.ui_muted));
             heading.addView(label, cellParams());
         }
         int offset = (month.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7;
@@ -103,8 +110,12 @@ final class HistoryView {
                 button.setTextSize(14);
                 String dayText = numbers.format(day);
                 button.setText(trained ? context.getString(R.string.calendar_marked, dayText) : dayText);
-                button.setBackgroundColor(day == selectedDay ? 0xffb8dfeb
-                        : trained ? 0xffdcefe5 : Color.WHITE);
+                boolean chosen = day == selectedDay;
+                button.setBackgroundResource(R.drawable.ui_day);
+                button.setSelected(chosen);
+                button.setActivated(trained);
+                button.setTextColor(context.getResources().getColor(
+                        chosen ? android.R.color.white : R.color.ui_graphite));
                 button.setContentDescription(trained
                         ? context.getString(R.string.trained_day, day) : dayText);
                 button.setOnClickListener(v -> {
@@ -124,7 +135,7 @@ final class HistoryView {
     }
 
     private LinearLayout.LayoutParams cellParams() {
-        return new LinearLayout.LayoutParams(0, Math.round(40 * context.getResources()
+        return new LinearLayout.LayoutParams(0, Math.round(48 * context.getResources()
                 .getDisplayMetrics().density), 1);
     }
 
@@ -133,7 +144,7 @@ final class HistoryView {
             dayHistory.setText(R.string.empty_day);
             return;
         }
-        DateFormat time = DateFormat.getTimeInstance(DateFormat.SHORT);
+        DateFormat time = DateFormat.getTimeInstance(DateFormat.SHORT, RUSSIAN);
         time.setTimeZone(selected.getTimeZone());
         StringBuilder text = new StringBuilder();
         for (WorkoutRecord entry : records) {
@@ -148,21 +159,35 @@ final class HistoryView {
         int request = ++statsRequest;
         Calendar today = DateRanges.day(System.currentTimeMillis(), TimeZone.getDefault());
         Calendar week = DateRanges.week(today), monthStart = DateRanges.month(today);
-        weekStats.setText(R.string.loading_history);
-        monthStats.setText(R.string.loading_history);
+        showStatisticsStatus(R.string.loading_history);
         repository.submit(() -> new long[][]{
                 repository.totals(week.getTimeInMillis(), DateRanges.next(week, Calendar.DAY_OF_MONTH, 7)),
                 repository.totals(monthStart.getTimeInMillis(), DateRanges.next(monthStart, Calendar.MONTH, 1))
         }, (data, success) -> {
             if (statsRequest != request) return;
             if (!success) {
-                weekStats.setText(R.string.history_error);
-                monthStats.setText(R.string.history_error);
+                showStatisticsStatus(R.string.history_error);
                 return;
             }
-            weekStats.setText(context.getString(R.string.totals, data[0][0], data[0][1]));
-            monthStats.setText(context.getString(R.string.totals, data[1][0], data[1][1]));
+            showStatisticsStatus(0);
+            for (int period = 0; period < totals.length; period++) {
+                for (int exercise = 0; exercise < totals[period].length; exercise++) {
+                    totals[period][exercise].setText(context.getString(R.string.metric_number, data[period][exercise]));
+                }
+            }
         });
+    }
+
+    private void showStatisticsStatus(int message) {
+        for (TextView status : new TextView[]{weekStats, monthStats}) {
+            status.setVisibility(message == 0 ? View.GONE : View.VISIBLE);
+            if (message != 0) status.setText(message);
+        }
+        if (message != 0) {
+            for (TextView[] period : totals) {
+                for (TextView total : period) total.setText(R.string.metric_empty);
+            }
+        }
     }
 
     void invalidateRequests() {
@@ -178,7 +203,7 @@ final class HistoryView {
     }
 
     private static String format(String pattern, Calendar date) {
-        SimpleDateFormat formatter = new SimpleDateFormat(pattern, Locale.getDefault());
+        SimpleDateFormat formatter = new SimpleDateFormat(pattern, RUSSIAN);
         formatter.setTimeZone(date.getTimeZone());
         return formatter.format(date.getTime());
     }

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:background="@drawable/ui_card">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <Button android:id="@+id/previous_month" style="@style/FitCounter.Button" android:text="@string/previous_arrow" android:layout_width="48dp" android:textSize="26sp" android:contentDescription="@string/previous_month" />
+        <TextView android:id="@+id/month_label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/ui_graphite" android:textSize="21sp" android:textStyle="bold" />
+        <Button android:id="@+id/next_month" style="@style/FitCounter.Button" android:text="@string/next_arrow" android:layout_width="48dp" android:textSize="26sp" android:contentDescription="@string/next_month" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/calendar_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+
+</LinearLayout>
+</LinearLayout>

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/stats_screen" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <TextView style="@style/FitCounter.Title" android:text="@string/statistics" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:baselineAligned="false">
+            <include layout="@layout/stats_week" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <Space android:layout_width="20dp" android:layout_height="1dp" />
+            <include layout="@layout/stats_month" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
