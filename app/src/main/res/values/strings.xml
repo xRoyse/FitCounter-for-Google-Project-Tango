@@ -12,6 +12,7 @@
     <string name="finish">Завершить</string>
     <string name="reset">Сбросить</string>
     <string name="retry">Повторить</string>
+    <string name="switch_camera">Переключить камеру</string>
     <string name="retry_save">Сохранить</string>
     <string name="thresholds">Пороги углов</string>
     <string name="apply">Применить</string>

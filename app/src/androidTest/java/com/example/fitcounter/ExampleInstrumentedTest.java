@@ -102,6 +102,27 @@ public class ExampleInstrumentedTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    @Test public void switchesBetweenRearAndFrontCamera() throws Exception {
+        boolean front = false, rear = false;
+        for (int id = 0; id < Camera.getNumberOfCameras(); id++) {
+            Camera.CameraInfo info = new Camera.CameraInfo();
+            Camera.getCameraInfo(id, info);
+            front |= info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
+            rear |= info.facing == Camera.CameraInfo.CAMERA_FACING_BACK;
+        }
+        assumeTrue("Both camera directions are required", front && rear);
+        CameraFrameSource source = new CameraFrameSource();
+        SurfaceTexture texture = new SurfaceTexture(0);
+        try {
+            assertFalse(verifyFrames(source, texture, FrameSource.Facing.REAR));
+            assertTrue(verifyFrames(source, texture, FrameSource.Facing.FRONT));
+            assertFalse(verifyFrames(source, texture, FrameSource.Facing.REAR));
+        } finally {
+            releaseCamera(source, texture);
+        }
+    }
+
     @Test public void opensCalendarAndStatisticsFromTrainingScreen() {
         Instrumentation test = instrumentation();
         Intent intent = new Intent(test.getTargetContext(), MainActivity.class)

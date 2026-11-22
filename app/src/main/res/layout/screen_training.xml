@@ -5,6 +5,7 @@
             <com.example.fitcounter.SkeletonView android:id="@+id/skeleton" android:layout_width="match_parent" android:layout_height="match_parent"/>
         </com.example.fitcounter.PreviewPane>
         <TextView android:id="@+id/camera_status" style="@style/FitCounter.Line" />
+        <Button android:id="@+id/switch_camera" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/switch_camera" android:visibility="gone"/>
         <Button android:id="@+id/retry_camera" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/retry" android:visibility="gone"/>
         <TextView  style="@style/FitCounter.Line" android:labelFor="@id/exercise" android:text="@string/exercise_label"/>
         <Spinner android:id="@+id/exercise" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp"/>

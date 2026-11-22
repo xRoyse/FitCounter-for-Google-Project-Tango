@@ -61,7 +61,9 @@ public class MainActivity extends Activity {
     private SkeletonView skeleton;
     private Spinner selector;
     private TextView repetitions, angle, phase, hint, cameraStatus, saveMessage;
-    private Button start, finish, reset, retry, thresholds;
+    private Button start, finish, reset, retry, thresholds, switchCamera;
+    private FrameSource.Facing cameraFacing;
+    private boolean canSwitchCamera;
     private int tab, generation, rotation, cameraError;
     private boolean resumed, destroyed, permissionAsked, cameraReady, modelReady, mirror, saving;
     private int workoutMessage;
@@ -75,6 +77,8 @@ public class MainActivity extends Activity {
         exercise = Exercise.values()[state == null ? settings.getInt("exercise", 0)
                 : state.getInt("exercise", 0)];
         permissionAsked = state != null && state.getBoolean("permissionAsked");
+        cameraFacing = state == null ? FrameSource.Facing.AUTO
+                : FrameSource.Facing.valueOf(state.getString("cameraFacing", FrameSource.Facing.AUTO.name()));
         repository = WorkoutRepository.shared(this);
         session = new WorkoutSession(exercise, upper(), lower(),
                 state == null ? null : state.getBundle("session"));
@@ -94,6 +98,7 @@ public class MainActivity extends Activity {
         finish = findViewById(R.id.finish_workout);
         reset = findViewById(R.id.reset_workout);
         retry = findViewById(R.id.retry_camera);
+        switchCamera = findViewById(R.id.switch_camera);
         thresholds = findViewById(R.id.thresholds);
         selector = findViewById(R.id.exercise);
 
@@ -123,6 +128,13 @@ public class MainActivity extends Activity {
             maybeStartPreview();
         });
         thresholds.setOnClickListener(v -> editThresholds());
+        switchCamera.setOnClickListener(v -> {
+            boolean front = cameraReady ? mirror : cameraFacing == FrameSource.Facing.FRONT;
+            cameraFacing = front ? FrameSource.Facing.REAR : FrameSource.Facing.FRONT;
+            cameraError = 0;
+            stopPreview();
+            maybeStartPreview();
+        });
         showTab(state == null ? 0 : state.getInt("tab"));
         if (session.pending()) saveWorkout();
     }
@@ -224,6 +236,7 @@ public class MainActivity extends Activity {
         state.putInt("tab", tab);
         state.putInt("exercise", exercise.ordinal());
         state.putBoolean("permissionAsked", permissionAsked);
+        state.putString("cameraFacing", cameraFacing.name());
         state.putBundle("session", session.state());
         state.putBundle("history", history.state());
         super.onSaveInstanceState(state);
@@ -290,7 +303,15 @@ public class MainActivity extends Activity {
         });
         pipeline = current;
         if (source == null) source = new CameraFrameSource();
-        source.start(texture.getSurfaceTexture(), rotation, FrameSource.Facing.AUTO, new FrameSource.Listener() {
+        source.start(texture.getSurfaceTexture(), rotation, cameraFacing, new FrameSource.Listener() {
+            @Override public void onCameraOptions(boolean canSwitch) {
+                ui.post(() -> {
+                    if (ticket != generation) return;
+                    canSwitchCamera = canSwitch;
+                    render();
+                });
+            }
+
             @Override public void onPreview(int width, int height, boolean mirrored) {
                 ui.post(() -> {
                     if (ticket != generation) return;
@@ -388,6 +409,8 @@ public class MainActivity extends Activity {
         showMessage(cameraStatus, cameraError != 0 ? cameraError : !ready
                 ? R.string.camera_loading : !hasAngle ? R.string.no_pose : 0);
         retry.setVisibility(cameraError != 0 ? View.VISIBLE : View.GONE);
+        switchCamera.setVisibility(canSwitchCamera && hasPermission() ? View.VISIBLE : View.GONE);
+        switchCamera.setEnabled(cameraReady || cameraError != 0);
     }
 
     private void showMessage(TextView view, int message) {
