@@ -53,7 +53,7 @@ final class CameraFrameSource implements FrameSource {
                     Camera.CameraInfo info = cameras[id];
                     if (info == null || front != (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)) continue;
                     try {
-                        startCamera(Camera.open(id), surface, displayDegrees, info.orientation,
+                        startCamera(id, Camera.open(id), surface, displayDegrees, info.orientation,
                                 front, listener);
                         if (BuildConfig.DEBUG) Log.d("FitCounter", "Camera ID " + id + " streaming NV21");
                         return;
@@ -67,10 +67,10 @@ final class CameraFrameSource implements FrameSource {
             Log.w("FitCounter", "Camera enumeration failed", e);
             release();
         }
-        listener.onCameraError();
+        listener.onCameraError("CAMERA_OPEN_FAILED");
     }
 
-    private void startCamera(Camera opened, SurfaceTexture surface, int displayDegrees,
+    private void startCamera(int id, Camera opened, SurfaceTexture surface, int displayDegrees,
             int sensorDegrees, boolean front, Listener listener) throws IOException {
         camera = opened;
         Camera.Parameters parameters = opened.getParameters();
@@ -108,7 +108,7 @@ final class CameraFrameSource implements FrameSource {
             cancelFirstFrameTimeout();
             if (data.length < bytes) {
                 release();
-                listener.onCameraError();
+                listener.onCameraError("INVALID_NV21_BUFFER");
                 return;
             }
             listener.onFrame(new Frame(data, width, height, sensorToUpright,
@@ -119,25 +119,26 @@ final class CameraFrameSource implements FrameSource {
                         } catch (RuntimeException e) {
                             Log.w("FitCounter", "Camera rejected preview buffer", e);
                             release();
-                            listener.onCameraError();
+                            listener.onCameraError("CALLBACK_BUFFER_REJECTED");
                         }
                     })));
         });
         opened.setErrorCallback((error, owner) -> {
             if (owner == camera) {
                 release();
-                listener.onCameraError();
+                listener.onCameraError("CAMERA_HAL_ERROR_" + error);
             }
         });
         opened.startPreview();
         firstFrameTimeout = () -> {
             if (camera == opened) {
                 release();
-                listener.onCameraError();
+                listener.onCameraError("FIRST_FRAME_TIMEOUT");
             }
         };
         WORKER.postDelayed(firstFrameTimeout, FIRST_FRAME_TIMEOUT_MS);
         boolean swapped = sensorToUpright % 180 != 0;
+        listener.onCameraConfigured(id, width, height, sensorDegrees, sensorToUpright, displayDegrees, front);
         listener.onPreview(swapped ? height : width, swapped ? width : height, front);
     }
 

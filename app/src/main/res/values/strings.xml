@@ -3,6 +3,7 @@
     <string name="training">Тренировка</string>
     <string name="calendar">Календарь</string>
     <string name="statistics">Статистика</string>
+    <string name="stats_version">Версия %1$s</string>
     <string name="exercise_label">Упражнение</string>
     <string name="push_up">Отжимания</string>
     <string name="squat">Приседания</string>

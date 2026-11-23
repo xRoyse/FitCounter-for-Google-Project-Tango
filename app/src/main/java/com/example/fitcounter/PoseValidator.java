@@ -10,15 +10,20 @@ final class PoseValidator {
     private long previousTime, lastStrong;
     private int consecutive;
     private boolean tracked;
+    String reason = "ACQUIRING";
 
     boolean accept(Pose pose, FrameTransform frame, long time) {
-        Evidence current = inspect(pose, frame);
+        return accept(inspect(pose, frame), time);
+    }
+
+    boolean accept(Evidence current, long time) {
         if (current == null) {
             if (!tracked || time - lastStrong > CONTINUITY_MS) reset();
             return false;
         }
-        if (previous != null && (time <= previousTime || time - previousTime > CONTINUITY_MS
-                || !previous.near(current, time - previousTime))) reset();
+        boolean jumped = previous != null && time > previousTime && time - previousTime <= CONTINUITY_MS
+                && !previous.near(current, time - previousTime);
+        if (jumped || previous != null && (time <= previousTime || time - previousTime > CONTINUITY_MS)) reset();
         if (current.strong) {
             lastStrong = time;
             tracked |= ++consecutive >= 2;
@@ -28,6 +33,8 @@ final class PoseValidator {
         }
         previous = current;
         previousTime = time;
+        reason = tracked ? "CONFIRMED" : jumped ? "BODY_JUMP" : current.strong
+                ? "CONFIRMING_PERSON" : "WEAK_BODY_EVIDENCE";
         return tracked;
     }
 
@@ -37,20 +44,35 @@ final class PoseValidator {
         tracked = false;
     }
 
-    private static Evidence inspect(Pose pose, FrameTransform frame) {
+    Evidence inspect(Pose pose, FrameTransform frame) {
+        reason = "PERSON_NOT_DETECTED";
+        if (pose == null) return null;
+        int invalid = 0;
         for (int i = 0; i < Pose.SIZE; i++) {
             if (!(pose.x[i] >= 0 && pose.x[i] < frame.uprightWidth
                     && pose.y[i] >= 0 && pose.y[i] < frame.uprightHeight
                     && pose.confidence[i] >= 0 && pose.confidence[i] <= 1)) {
+                if (pose.confidence[i] >= DRAW_CONFIDENCE) invalid |= 1 << i;
                 pose.confidence[i] = 0;
             }
         }
-        int side = Math.min(pose.confidence[5], pose.confidence[11])
-                >= Math.min(pose.confidence[6], pose.confidence[12]) ? 0 : 1;
+        float left = Math.min(pose.confidence[5], pose.confidence[11]);
+        float right = Math.min(pose.confidence[6], pose.confidence[12]);
+        int side = left >= right ? 0 : 1;
+        double minTorso = Math.min(frame.uprightWidth, frame.uprightHeight) * 0.045;
+        if (pose.distance(5 + side, 11 + side) < minTorso
+                && Math.min(left, right) >= DRAW_CONFIDENCE) {
+            // При наложении суставов дальней стороны опираемся на вторую видимую сторону.
+            side = 1 - side;
+        }
         int shoulder = 5 + side, hip = 11 + side;
-        if (!pose.visible(shoulder, DRAW_CONFIDENCE) || !pose.visible(hip, DRAW_CONFIDENCE)) return null;
+        if (!pose.visible(shoulder, DRAW_CONFIDENCE) || !pose.visible(hip, DRAW_CONFIDENCE)) {
+            reason = (invalid & ((3 << 5) | (3 << 11))) != 0 ? "INVALID_COORDINATES" : "LOW_TORSO_CONFIDENCE";
+            return null;
+        }
+        reason = "INVALID_BODY_GEOMETRY";
         double torso = pose.distance(shoulder, hip);
-        if (torso < Math.min(frame.uprightWidth, frame.uprightHeight) * 0.045) return null;
+        if (torso < minTorso) return null;
         int anchors = 0, support = 0, usable = 0;
         float score = 0;
         for (int joint : TORSO) {
@@ -93,7 +115,7 @@ final class PoseValidator {
         return 2;
     }
 
-    private static final class Evidence {
+    static final class Evidence {
         final double x, y, torso;
         final boolean strong;
 

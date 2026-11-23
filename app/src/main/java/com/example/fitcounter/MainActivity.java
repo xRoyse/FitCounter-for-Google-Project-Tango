@@ -4,6 +4,9 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -27,10 +30,13 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
+import java.io.File;
 import java.text.NumberFormat;
 
 public class MainActivity extends Activity {
     private static final int CAMERA_REQUEST = 1;
+    private static final int DIAGNOSTICS_DOCUMENT = 2;
     private static final long POSE_TIMEOUT_MS = 800;
     private static final int[] TAB_IDS = {R.id.tab_training, R.id.tab_calendar, R.id.tab_stats};
     private static final int[] SCREEN_IDS = {R.id.training_screen, R.id.calendar_screen, R.id.stats_screen};
@@ -40,10 +46,12 @@ public class MainActivity extends Activity {
     private final Runnable poseExpired = this::expirePose;
     private final Runnable overlayExpired = () -> this.skeleton.show(null, null, false);
     private final Runnable openCamera = this::openPreview;
+    private final Runnable heartbeat = this::monitorHeartbeat;
     private final DisplayManager.DisplayListener displayListener = new DisplayManager.DisplayListener() {
         @Override public void onDisplayAdded(int id) {}
         @Override public void onDisplayRemoved(int id) {}
         @Override public void onDisplayChanged(int id) {
+            diagnostics.display(MainActivity.this, displayDegrees());
             if (pipeline != null && displayDegrees() != rotation) {
                 stopPreview();
                 maybeStartPreview();
@@ -58,6 +66,11 @@ public class MainActivity extends Activity {
     private Exercise exercise;
     private CameraFrameSource source;
     private PosePipeline pipeline;
+    private Diagnostics diagnostics;
+    private DeveloperPanel developerPanel;
+    private File pendingReport;
+    private int statsTaps;
+    private long statsFirst, nextHeartbeat;
     private DisplayManager displayManager;
     private TextureView texture;
     private PreviewPane preview;
@@ -70,12 +83,15 @@ public class MainActivity extends Activity {
     private boolean canSwitchCamera;
     private int tab, generation, rotation, cameraError;
     private boolean resumed, destroyed, permissionAsked, cameraReady, modelReady, mirror, saving;
-    private long lastPoseFrame, previewWindow;
-    private int previewFrames;
+    private long lastPoseFrame;
     private int workoutMessage;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        diagnostics = Diagnostics.get(this);
+        if (state != null && state.getString("pendingReport") != null) {
+            pendingReport = new File(DiagnosticsExport.directory(this), state.getString("pendingReport"));
+        }
         setContentView(R.layout.activity_main);
         if (Build.VERSION.SDK_INT >= 35) EdgeToEdge.apply(findViewById(R.id.main));
 
@@ -93,6 +109,7 @@ public class MainActivity extends Activity {
 
         preview = findViewById(R.id.preview);
         skeleton = findViewById(R.id.skeleton);
+        skeleton.monitor(diagnostics);
         texture = findViewById(R.id.camera_texture);
         repetitions = findViewById(R.id.repetitions);
         angle = findViewById(R.id.angle);
@@ -112,18 +129,20 @@ public class MainActivity extends Activity {
 
         for (int i = 0; i < TAB_IDS.length; i++) {
             final int index = i;
-            findViewById(TAB_IDS[i]).setOnClickListener(v -> showTab(index));
+            findViewById(TAB_IDS[i]).setOnClickListener(v -> onTabClick(index));
         }
         configureSelector();
         configurePreview();
         start.setOnClickListener(v -> {
             workoutMessage = 0;
             session.start(SystemClock.uptimeMillis());
+            diagnostics.checkpoint(session, "WORKOUT_STARTED");
             render();
         });
         reset.setOnClickListener(v -> {
             workoutMessage = 0;
             session.reset(SystemClock.uptimeMillis());
+            diagnostics.checkpoint(session, "WORKOUT_RESET");
             render();
         });
         finish.setOnClickListener(v -> saveWorkout());
@@ -139,11 +158,13 @@ public class MainActivity extends Activity {
         switchCamera.setOnClickListener(v -> {
             boolean front = cameraReady ? mirror : cameraFacing == FrameSource.Facing.FRONT;
             cameraFacing = front ? FrameSource.Facing.REAR : FrameSource.Facing.FRONT;
+            diagnostics.log("INFO", "CAMERA", "CAMERA_SWITCH_REQUESTED", cameraFacing.name());
             cameraError = 0;
             stopPreview();
             maybeStartPreview();
         });
         showTab(state == null ? 0 : state.getInt("tab"));
+        diagnostics.checkpoint(session, "EXERCISE_SELECTED");
         if (session.pending()) saveWorkout();
     }
 
@@ -174,6 +195,7 @@ public class MainActivity extends Activity {
                 settings.edit().putInt("exercise", position).apply();
                 session.select(exercise, upper(), lower());
                 session.reset(SystemClock.uptimeMillis());
+                diagnostics.checkpoint(session, "EXERCISE_SELECTED");
                 workoutMessage = 0;
                 render();
             }
@@ -194,17 +216,35 @@ public class MainActivity extends Activity {
                 return false;
             }
             @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-                if (!BuildConfig.DEBUG || !cameraReady) return;
-                long now = SystemClock.uptimeMillis();
-                if (previewFrames++ == 0) previewWindow = now;
-                if (previewFrames == 120) {
-                    android.util.Log.d("FitCounter", "UI preview fps="
-                            + 119_000f / Math.max(1, now - previewWindow));
-                    previewFrames = 0;
-                }
+                if (cameraReady) diagnostics.metrics.uiPreview();
             }
         });
     }
+
+    private void onTabClick(int index) {
+        if (index != 2) {
+            statsTaps = 0;
+            showTab(index);
+            return;
+        }
+        if (tab != index) showTab(index);
+        long now = SystemClock.uptimeMillis();
+        if (statsTaps == 0 || now - statsFirst > 2500) {
+            statsTaps = 0;
+            statsFirst = now;
+        }
+        if (++statsTaps == 5) {
+            statsTaps = 0;
+            if (developerPanelShowing()) return;
+            diagnostics.log("INFO", "UI", "DEVELOPER_PANEL_OPENED", "Пять нажатий на «Статистика»");
+            developerPanel = new DeveloperPanel(this, diagnostics);
+            developerPanel.show();
+        }
+    }
+
+    boolean developerPanelShowing() { return developerPanel != null && developerPanel.showing(); }
+
+    void monitorTraining() { showTab(0); }
 
     private void showTab(int index) {
         int previous = tab;
@@ -212,7 +252,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < TAB_IDS.length; i++) {
             View navigation = findViewById(TAB_IDS[i]);
             navigation.setSelected(i == tab);
-            navigation.setEnabled(i != tab);
+            navigation.setEnabled(i != tab || i == 2);
             findViewById(SCREEN_IDS[i]).setVisibility(i == tab ? View.VISIBLE : View.GONE);
         }
         if (tab == 0) {
@@ -232,6 +272,10 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         resumed = true;
+        diagnostics.display(this, displayDegrees());
+        diagnostics.log("INFO", "APP", "APP_UI_RESUMED", "Интерфейс активен");
+        nextHeartbeat = SystemClock.uptimeMillis() + 500;
+        ui.postAtTime(heartbeat, nextHeartbeat);
         displayManager.registerDisplayListener(displayListener, ui);
         if (tab == 0) maybeStartPreview();
         else refreshHistory();
@@ -239,6 +283,10 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         resumed = false;
+        statsTaps = 0;
+        ui.removeCallbacks(heartbeat);
+        org.json.JSONObject summary = diagnostics.summary();
+        diagnostics.log("INFO", "APP", "APP_UI_PAUSED", "Интерфейс ушёл в фон", 0, () -> summary);
         displayManager.unregisterDisplayListener(displayListener);
         stopPreview();
         super.onPause();
@@ -246,6 +294,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         destroyed = true;
+        if (developerPanel != null) developerPanel.close();
         history.invalidateRequests();
         stopPreview();
         super.onDestroy();
@@ -258,6 +307,7 @@ public class MainActivity extends Activity {
         state.putString("cameraFacing", cameraFacing.name());
         state.putBundle("session", session.state());
         state.putBundle("history", history.state());
+        if (pendingReport != null) state.putString("pendingReport", pendingReport.getName());
         super.onSaveInstanceState(state);
     }
 
@@ -289,6 +339,8 @@ public class MainActivity extends Activity {
         if (!resumed || destroyed || tab != 0 || pipeline != null) return;
         if (!hasPermission()) {
             cameraError = R.string.camera_permission;
+            diagnostics.error("CAMERA", "CAMERA_PERMISSION_REQUIRED", null);
+            diagnostics.camera("CAMERA_UNAVAILABLE", "Доступ к камере", Diagnostics.json("state", "ERROR"));
             render();
             if (!permissionAsked) askCameraPermission();
             return;
@@ -297,6 +349,9 @@ public class MainActivity extends Activity {
         cameraError = 0;
         int ticket = ++generation;
         rotation = displayDegrees();
+        diagnostics.display(this, rotation);
+        diagnostics.camera("CAMERA_OPENING", "Инициализация камеры", Diagnostics.json("state", "OPENING",
+                "requested_facing", cameraFacing.name(), "display_rotation_degrees", rotation));
         PosePipeline current = new PosePipeline(this, new PosePipeline.Listener() {
             @Override public void onReady() {
                 if (ticket != generation) return;
@@ -305,23 +360,38 @@ public class MainActivity extends Activity {
                 render();
             }
 
-            @Override public void onPose(PoseReading reading, Bitmap image) {
+            @Override public void onMeasurement(PoseReading reading) {
                 if (ticket != generation || cameraError != 0 || !cameraReady
-                        || reading.frameId <= lastPoseFrame
-                        || SystemClock.uptimeMillis() - reading.time > PosePipeline.MAX_DISPLAY_AGE_MS) return;
+                        || reading.frameId <= lastPoseFrame) return;
                 lastPoseFrame = reading.frameId;
+                int count = session.repetitions(), rejected = session.rejected();
+                TrackingStatus.State previous = session.tracking();
+                ExerciseCounter.Phase phase = session.phase();
+                session.accept(reading);
+                diagnostics.track(session, reading, count, rejected, previous, phase);
+                ui.removeCallbacks(poseExpired);
+                ui.postDelayed(poseExpired, POSE_TIMEOUT_MS);
+            }
+
+            @Override public void onPose(PoseReading reading, Bitmap image) {
+                if (ticket != generation || cameraError != 0 || !cameraReady) return;
+                if (SystemClock.uptimeMillis() - reading.time > PosePipeline.MAX_DISPLAY_AGE_MS) {
+                    diagnostics.metrics.staleOverlay();
+                    image = null;
+                }
                 skeleton.show(image == null ? null : reading, image, mirror);
                 ui.removeCallbacks(overlayExpired);
                 if (image != null) ui.postAtTime(overlayExpired, reading.time + PosePipeline.MAX_DISPLAY_AGE_MS);
-                session.accept(reading);
-                ui.removeCallbacks(poseExpired);
-                ui.postAtTime(poseExpired, reading.time + POSE_TIMEOUT_MS);
                 render();
             }
 
             @Override public void onModelError() {
                 if (ticket != generation) return;
                 cameraError = R.string.model_error;
+                cameraReady = false;
+                if (source != null) source.stop();
+                diagnostics.camera("POSE_PIPELINE_STOPPED", "Ошибка модели",
+                        Diagnostics.json("state", "ERROR", "error", "MODEL_FAILURE"));
                 expirePose();
             }
         });
@@ -336,9 +406,20 @@ public class MainActivity extends Activity {
                 });
             }
 
+            @Override public void onCameraConfigured(int id, int width, int height, int sensor, int upright,
+                                                     int display, boolean mirrored) {
+                ui.post(() -> {
+                    if (ticket != generation || cameraError == R.string.model_error) return;
+                    diagnostics.camera("CAMERA_CONFIGURED", "Поток NV21", Diagnostics.json("state", "ACTIVE",
+                            "camera_id", id, "api", "Camera1", "width", width, "height", height, "format", "NV21",
+                            "sensor_degrees", sensor, "upright_degrees", upright, "display_degrees", display,
+                            "mirror", mirrored, "facing", mirrored ? "FRONT" : "REAR"));
+                });
+            }
+
             @Override public void onPreview(int width, int height, boolean mirrored) {
                 ui.post(() -> {
-                    if (ticket != generation) return;
+                    if (ticket != generation || cameraError == R.string.model_error) return;
                     preview.setFrameSize(width, height);
                     mirror = mirrored;
                     cameraReady = true;
@@ -349,11 +430,16 @@ public class MainActivity extends Activity {
 
             @Override public void onFrame(Frame frame) { current.offer(frame); }
 
-            @Override public void onCameraError() {
+            @Override public void onCameraError() { onCameraError("CAMERA_ERROR"); }
+
+            @Override public void onCameraError(String code) {
                 ui.post(() -> {
-                    if (ticket != generation) return;
+                    if (ticket != generation || cameraError == R.string.model_error) return;
                     cameraReady = false;
                     cameraError = R.string.camera_error;
+                    diagnostics.error("CAMERA", code, null);
+                    diagnostics.camera("CAMERA_STOPPED_WITH_ERROR", code,
+                            Diagnostics.json("state", "ERROR", "error", code));
                     expirePose();
                 });
             }
@@ -365,11 +451,16 @@ public class MainActivity extends Activity {
         ui.removeCallbacks(poseExpired);
         ui.removeCallbacks(overlayExpired);
         skeleton.show(null, null, false);
+        int rejected = session.rejected();
         session.expirePose();
+        diagnostics.stopTracking();
+        diagnostics.checkpoint(session, "TRACKING_LOST");
+        if (rejected != session.rejected()) diagnostics.checkpoint(session, "REP_REJECTED");
         render();
     }
 
     private void stopPreview() {
+        boolean wasOpen = pipeline != null;
         generation++;
         ui.removeCallbacks(openCamera);
         if (pipeline != null) {
@@ -379,10 +470,16 @@ public class MainActivity extends Activity {
         if (source != null) source.stop();
         ui.removeCallbacks(poseExpired);
         cameraReady = modelReady = false;
-        previewFrames = 0;
         ui.removeCallbacks(overlayExpired);
         skeleton.show(null, null, false);
+        int rejected = session.rejected();
         session.resetTracking();
+        if (wasOpen) {
+            diagnostics.stopTracking();
+            diagnostics.camera("CAMERA_STOPPED", "Предпросмотр остановлен", Diagnostics.json("state", "STOPPED"));
+            diagnostics.checkpoint(session, "TRACKING_RESET");
+            if (rejected != session.rejected()) diagnostics.checkpoint(session, "REP_REJECTED");
+        }
         render();
     }
 
@@ -397,7 +494,9 @@ public class MainActivity extends Activity {
 
     private void saveWorkout() {
         if (saving) return;
+        boolean wasRunning = session.running();
         WorkoutRecord result = session.finish(System.currentTimeMillis());
+        if (wasRunning) diagnostics.checkpoint(session, "WORKOUT_FINISHED");
         if (result == null) {
             workoutMessage = R.string.empty_workout;
             render();
@@ -413,6 +512,7 @@ public class MainActivity extends Activity {
             if (destroyed) return;
             saving = false;
             if (success) session.saved(id);
+            if (!success) diagnostics.error("APP", "WORKOUT_SAVE_FAILED", null);
             workoutMessage = success ? R.string.saved : R.string.save_error;
             refreshHistory();
             render();
@@ -532,6 +632,56 @@ public class MainActivity extends Activity {
         settings.edit().putInt(exercise.name() + "_upper", high)
                 .putInt(exercise.name() + "_lower", low).apply();
         session.select(exercise, high, low);
+        diagnostics.checkpoint(session, "THRESHOLDS_CHANGED");
         render();
+    }
+
+    private void monitorHeartbeat() {
+        long now = SystemClock.uptimeMillis();
+        diagnostics.metrics.heartbeat(Math.max(0, now - nextHeartbeat));
+        diagnostics.sample();
+        nextHeartbeat = now + 500;
+        ui.postAtTime(heartbeat, nextHeartbeat);
+    }
+
+    void saveDiagnostics(File file) {
+        Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/zip")
+                .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, file.getName());
+        try {
+            pendingReport = file;
+            startActivityForResult(save, DIAGNOSTICS_DOCUMENT);
+        } catch (ActivityNotFoundException e) {
+            pendingReport = null;
+            diagnostics.error("APP", "DOCUMENT_PICKER_UNAVAILABLE", e);
+            Toast.makeText(this, "На устройстве нет окна сохранения файлов", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    void shareDiagnostics(File file) {
+        android.net.Uri report = DiagnosticsProvider.uri(this, file);
+        Intent share = new Intent(Intent.ACTION_SEND).setType("application/zip")
+                .putExtra(Intent.EXTRA_STREAM, report)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        share.setClipData(ClipData.newRawUri(file.getName(), report));
+        try {
+            Intent chooser = Intent.createChooser(share, "Поделиться отчётом FitCounter");
+            chooser.setClipData(share.getClipData());
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(chooser);
+        } catch (ActivityNotFoundException e) {
+            diagnostics.error("APP", "SHARE_UNAVAILABLE", e);
+            Toast.makeText(this, "Нет приложения для отправки ZIP", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        if (request != DIAGNOSTICS_DOCUMENT) return;
+        File file = pendingReport;
+        pendingReport = null;
+        if (result == RESULT_OK && file != null && data != null && data.getData() != null) {
+            DiagnosticsExport.save(diagnostics, file, data.getData(), ok -> Toast.makeText(MainActivity.this,
+                    ok ? "Отчёт сохранён" : "Не удалось сохранить отчёт", Toast.LENGTH_LONG).show());
+        }
     }
 }

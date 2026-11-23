@@ -21,11 +21,14 @@ public final class SkeletonView extends View {
     private long lastDrawnFrame, firstDraw;
     private final long[] drawTimes = new long[60], frameAges = new long[60];
     private int drawn;
+    private Diagnostics diagnostics;
 
     public SkeletonView(Context context, AttributeSet attrs) {
         super(context, attrs);
         density = getResources().getDisplayMetrics().density;
     }
+
+    void monitor(Diagnostics diagnostics) { this.diagnostics = diagnostics; }
 
     void show(PoseReading reading, Bitmap image, boolean mirror) {
         if (this.reading == reading && this.mirror == mirror) return;
@@ -63,9 +66,11 @@ public final class SkeletonView extends View {
                 canvas.drawCircle(x(i), y(i), 3.2f * density, paint);
             }
         }
-        if (BuildConfig.DEBUG && reading.frameId > lastDrawnFrame) {
+        if (reading.frameId > lastDrawnFrame) {
             lastDrawnFrame = reading.frameId;
             long now = System.nanoTime();
+            if (diagnostics != null) diagnostics.metrics.render(now - start, now - reading.arrivalNanos);
+            if (!BuildConfig.DEBUG) return;
             if (drawn == 0) firstDraw = now;
             drawTimes[drawn] = now - start;
             frameAges[drawn] = now - reading.arrivalNanos;

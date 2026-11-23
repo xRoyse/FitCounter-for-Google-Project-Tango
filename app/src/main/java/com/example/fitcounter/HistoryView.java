@@ -35,6 +35,8 @@ final class HistoryView {
         dayHistory = activity.findViewById(R.id.day_history);
         weekStats = activity.findViewById(R.id.week_stats);
         monthStats = activity.findViewById(R.id.month_stats);
+        TextView version = activity.findViewById(R.id.stats_version);
+        version.setText(activity.getString(R.string.stats_version, BuildConfig.VERSION_NAME));
         totals = new TextView[][]{
                 {activity.findViewById(R.id.week_push), activity.findViewById(R.id.week_squat)},
                 {activity.findViewById(R.id.month_push), activity.findViewById(R.id.month_squat)}

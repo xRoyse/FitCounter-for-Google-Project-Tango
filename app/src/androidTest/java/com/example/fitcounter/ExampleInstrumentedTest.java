@@ -188,6 +188,10 @@ public class ExampleInstrumentedTest {
                 assertTrue(month.getText().length() > 0);
                 activity.findViewById(R.id.tab_stats).performClick();
                 assertEquals(View.VISIBLE, activity.findViewById(R.id.stats_screen).getVisibility());
+                TextView version = activity.findViewById(R.id.stats_version);
+                assertTrue(version.isShown());
+                assertEquals(activity.getString(R.string.stats_version, BuildConfig.VERSION_NAME),
+                        version.getText().toString());
             });
         } finally {
             test.runOnMainSync(activity::finish);

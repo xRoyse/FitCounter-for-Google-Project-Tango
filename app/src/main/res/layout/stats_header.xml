@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="14dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+        style="@style/FitCounter.Title"
+        android:layout_width="0dp"
+        android:layout_marginBottom="0dp"
+        android:layout_weight="1"
+        android:text="@string/statistics" />
+
+    <TextView
+        android:id="@+id/stats_version"
+        style="@style/FitCounter.Caption"
+        android:layout_width="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/ui_good"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:textColor="@color/ui_emerald"
+        android:textStyle="bold" />
+</LinearLayout>

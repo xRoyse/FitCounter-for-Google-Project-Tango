@@ -8,14 +8,15 @@ import java.io.InputStream;
 final class VideoFrameSource implements AutoCloseable {
     private final DataInputStream input;
     private final byte[] buffer;
-    private final int width, height, fps;
+    private final int width, height, fps, rotation;
     private long index;
 
-    VideoFrameSource(InputStream input, int width, int height, int fps) {
+    VideoFrameSource(InputStream input, int width, int height, int fps, int rotation) {
         this.input = new DataInputStream(input);
         this.width = width;
         this.height = height;
         this.fps = fps;
+        this.rotation = rotation;
         buffer = new byte[width * height * 3 / 2];
     }
 
@@ -24,7 +25,7 @@ final class VideoFrameSource implements AutoCloseable {
         if (first < 0) return null;
         buffer[0] = (byte) first;
         input.readFully(buffer, 1, buffer.length - 1);
-        return new Frame(buffer, width, height, 0, index++ * 1000 / fps, () -> {});
+        return new Frame(buffer, width, height, rotation, index++ * 1000 / fps, () -> {});
     }
 
     @Override public void close() throws IOException { input.close(); }

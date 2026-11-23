@@ -39,7 +39,7 @@ public final class PoseMediaTest {
                 String id = fixture.getString("id");
                 try (VideoFrameSource source = new VideoFrameSource(
                         archive.getInputStream(archive.getEntry(id + ".nv21")), fixture.getInt("width"),
-                        fixture.getInt("height"), fixture.getInt("fps"))) {
+                        fixture.getInt("height"), fixture.getInt("fps"), fixture.optInt("sensorRotation"))) {
                     summaries.put(replay(target, estimator, source, fixture, errors));
                 }
             }
@@ -84,6 +84,13 @@ public final class PoseMediaTest {
                 JSONObject sample = new JSONObject().put("time_ms", frame.time).put("frame_id", frame.id)
                         .put("person", reading.pose != null).put("status", status.name())
                         .put("phase", session.phase().name()).put("count", session.repetitions())
+                        .put("validation", reading.validation).put("condition", session.blocking())
+                        .put("crop_size_px", reading.transform.cropSize).put("full_frame_retry", reading.fullFrameRetry)
+                        .put("phase_previous", session.previousPhase().name()).put("rejected", session.rejected())
+                        .put("last_rejection", session.rejection()).put("tracking_loss_ms",
+                                session.missingSince() < 0 ? 0 : frame.time - session.missingSince())
+                        .put("measurement_reasons", new JSONArray(java.util.Arrays.asList(
+                                reading.limbReasons[exercise.ordinal()])))
                         .put("angle", Double.isNaN(session.angle()) ? JSONObject.NULL : session.angle())
                         .put("preprocess_us", reading.preprocessNanos / 1000)
                         .put("inference_us", reading.inferenceNanos / 1000)

@@ -25,6 +25,16 @@
     "minConfirmed": 74, "maxWarnings": 0
   },
   {
+    "id": "rotated-squat",
+    "file": "517502.mp4",
+    "start": 16, "duration": 15.65, "width": 270, "height": 480, "fps": 8,
+    "filter": ["transpose=cclock"],
+    "sensorRotation": 90,
+    "exercise": "SQUAT",
+    "reps": [[2550, 3550], [5650, 6550], [8550, 9750], [11600, 12750], [14800, 15625]],
+    "minConfirmed": 115, "maxWarnings": 0, "finalStatus": "TRACKING"
+  },
+  {
     "id": "occluded-push",
     "file": "subject_002_push_up_good_side.mp4",
     "duration": 13.9, "width": 480, "height": 270, "fps": 8,
